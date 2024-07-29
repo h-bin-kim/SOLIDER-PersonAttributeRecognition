@@ -91,7 +91,7 @@ def get_transform(cfg):
 
         train_transform = T.Compose([
             T.Resize((height, width)),
-            T.Pad(10),
+            T.Pad(5),
             T.RandomCrop((height, width)),
             T.RandomHorizontalFlip(),
             T.ToTensor(),

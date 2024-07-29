@@ -1,0 +1,50 @@
+NAME: '.sm08'
+
+DATASET:
+  TYPE: 'pedes'
+  NAME: 'adddipar'
+  PATH: '/home/adddai/ex_hdd/datasets/adddi/par/release/xadv2.2.1'
+  TRAIN_SPLIT: 'train'
+  VAL_SPLIT: 'test'
+  ZERO_SHOT: False
+  LABEL: 'eval'
+  HEIGHT: 128
+  WIDTH: 64
+
+RELOAD:
+  TYPE: False
+  NAME: 'backbone'
+
+BACKBONE:
+  TYPE: 'swin_t' # swin_t/s/b
+
+CLASSIFIER:
+  NAME: 'linear'
+  POOLING: 'avg'
+  SCALE: 1
+  BN: False
+
+LOSS:
+  TYPE: 'bceloss'
+  LOSS_WEIGHT: [1]
+  SAMPLE_WEIGHT: 'weight'
+
+TRAIN:
+  CLIP_GRAD: True
+  BATCH_SIZE: 64
+  MAX_EPOCH: 40
+  OPTIMIZER:
+    TYPE: 'adam'
+    WEIGHT_DECAY: 0.0
+  LR_SCHEDULER:
+    TYPE: 'plateau'
+    LR_FT: 0.00001
+    LR_NEW: 0.00001
+  EMA:
+    ENABLE: False
+
+METRIC:
+  TYPE: 'pedestrian'
+
+VIS:
+  CAM: 'valid'

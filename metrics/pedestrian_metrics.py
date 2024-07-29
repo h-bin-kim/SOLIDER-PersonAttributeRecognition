@@ -1,18 +1,32 @@
-import time
-
 import numpy as np
-from easydict import EasyDict
-import torch
 
 
-def get_pedestrian_metrics(gt_label, preds_probs, threshold=0.5, index=None, cfg=None):
+class ParResult:
+    def __init__(self):
+        self.label_pos_recall = None
+        self.label_neg_recall = None
+        self.label_prec = None
+        self.label_acc = None
+        self.label_f1 = None
+        self.label_ma = None
+        self.ma = None
+        self.instance_acc = None
+        self.instance_prec = None
+        self.instance_recall = None
+        self.instance_f1 = None
+        self.error_num = None
+        self.fn_num = None
+        self.fp_num = None
+
+
+def get_pedestrian_metrics(gt_label, preds_probs, threshold=0.5, index=None):
     """
     index: evaluated label index
     """
     pred_label = preds_probs > threshold
 
     eps = 1e-20
-    result = EasyDict()
+    result = ParResult()
 
     if index is not None:
         pred_label = pred_label[:, index]

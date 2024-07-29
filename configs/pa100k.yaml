@@ -3,12 +3,13 @@ NAME: '.sm08'
 DATASET:
   TYPE: 'pedes'
   NAME: 'PA100k'
+  PATH: ''
   TRAIN_SPLIT: 'trainval'
   VAL_SPLIT: 'test'
   ZERO_SHOT: False
   LABEL: 'eval'
-  HEIGHT: 256
-  WIDTH: 128
+  HEIGHT: 128
+  WIDTH: 64
 
 RELOAD:
   TYPE: False

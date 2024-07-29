@@ -1,147 +1,177 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-from yacs.config import CfgNode as CN
-
-_C = CN()
+# from yacs.config import CfgNode as CN
+import re
+import typing
+from triton import Config
+import yaml  # PyYaml
 
 
-# ----- BASIC SETTINGS -----
-_C.NAME = "default"
-_C.REDIRECTOR = True
+class ConfigNamespace:
+    def __init__(self, *args, **kwargs):
+        for k, v in self.__class__.__dict__.items():
+            if not k.startswith('__') and not callable(v):
+                self.update({k: v})
+        for k in kwargs.keys():
+            self.update({k: kwargs[k]})
+        self.make_recursive_namespace()
 
-_C.RELOAD = CN()
-_C.RELOAD.TYPE = False
-_C.RELOAD.NAME = 'backbone'
-_C.RELOAD.PTH = ''
+    def make_recursive_namespace(self, target=None):
+        for k, v in self.__dict__.items():
+            if isinstance(v, dict):
+                new_name_space = ConfigNamespace(**v)
+                self.__dict__.update({k: new_name_space})
+
+    def keys(self):
+        return self.__dict__.keys()
+    
+    def items(self):
+        return self.__dict__.items()
+    
+    def update(self, d):
+        self.__dict__.update(d)
+    
+    def __iter__(self):
+        """Return an iterator of key-value pairs from the namespace's attributes."""
+        return iter(vars(self).items())
+
+    def __str__(self):
+        """Return a human-readable string representation of the object."""
+        txt = '\n'.join(f'{k}: {v}' for k, v in vars(self).items())
+        return txt
+
+    def get(self, key, default=None):
+        """Return the value of the specified key if it exists; otherwise, return the default value."""
+        return getattr(self, key, default)
+    
+
+class BasicCN(ConfigNamespace):
+    NAME = "default"
+    DISTRIBUTTED = False
+    
+    class ReloadCN(ConfigNamespace):
+        TYPE = False
+        NAME = 'backbone'
+        PTH = ''
+    RELOAD = ReloadCN()
+    
+    class DatasetCN(ConfigNamespace):
+        NAME = "PA100k"
+        TARGETTRANSFORM = []
+        PATH = ''
+        ZERO_SHOT = False
+        LABEL = 'eval'  # train on all labels, test on part labels (35 for peta, 51 for rap)
+        TRAIN_SPLIT = 'trainval'
+        VAL_SPLIT = 'val'
+        TEST_SPLIT = 'test'
+        HEIGHT = 256
+        WIDTH = 192
+    DATASET = DatasetCN()
+    
+    class BackboneCN(ConfigNamespace):
+        TYPE = "resnet50"
+        MULTISCALE = False
+    BACKBONE = BackboneCN()
+    
+    class ClassifierCN(ConfigNamespace):
+        TYPE = "base"
+        NAME = ""
+        POOLING = "avg"
+        BN = False
+        SCALE = 1
+    CLASSIFIER = ClassifierCN()
+    
+    class TrainCN(ConfigNamespace):
+        BATCH_SIZE = 64
+        MAX_EPOCH = 30
+        SHUFFLE = True
+        NUM_WORKERS = 4
+        CLIP_GRAD = False
+        BN_WD = True
+        AUX_LOSS_START = -1
+        
+        class DataAugCN(ConfigNamespace):
+            TYPE = 'base'
+            AUTOAUG_PROB = 0.5
+        DATAAUG = DataAugCN()
+        
+        class EmaCN(ConfigNamespace):
+            ENABLE = False
+            DECAY = 0.9998
+            FORCE_CPU = False
+        EMA = EmaCN()
+        
+        class OptimizerCN(ConfigNamespace):
+            TYPE = "SGD"
+            MOMENTUM = 0.9
+            WEIGHT_DECAY = 1e-4
+        OPTIMIZER = OptimizerCN()
+        
+        class LrSchedulerCN(ConfigNamespace):
+            TYPE = "plateau"
+            LR_STEP = [0,]
+            LR_FT = 1e-2
+            LR_NEW = 1e-2
+            WMUP_COEF = 0.01
+            WMUP_LR_INIT = 1e-6
+        LR_SCHEDULER = LrSchedulerCN()
+        
+    TRAIN = TrainCN()
+    
+    class InferCN(ConfigNamespace):
+        SAMPLING = False
+    INFER = InferCN()
+    
+    class LossCN(ConfigNamespace):
+        TYPE = "bce"
+        SAMPLE_WEIGHT = ""  # None
+        LOSS_WEIGHT = [1, ]
+        SIZESUM = True   # for a sample, BCE losses is the summation of all label instead of the average.
+    LOSS = LossCN()
+    
+    class MetricCN(ConfigNamespace):
+        TYPE = 'pedestrian'
+    METRIC = MetricCN()
+    
+    class VisCN(ConfigNamespace):
+        CAM = 'valid'
+    VIS = VisCN()
+    
+    class TransCN(ConfigNamespace):
+        DIM_HIDDEN = 256
+        DROPOUT = 0.1
+        NHEADS = 8
+        DIM_FFD = 2048
+        ENC_LAYERS = 6
+        DEC_LAYERS = 6
+        PRE_NORM = False
+        EOS_COEF = 0.1
+        NUM_QUERIES = 100
+    TRANS = TransCN()
 
 
-_C.DISTRIBUTTED = False
+_C = BasicCN()
 
-# ----- DATASET BUILDER -----
-_C.DATASET = CN()
-_C.DATASET.TYPE = "pedes"
-_C.DATASET.NAME = "PA100k"
-_C.DATASET.TARGETTRANSFORM = []
-_C.DATASET.ZERO_SHOT = False
-_C.DATASET.LABEL = 'eval'  # train on all labels, test on part labels (35 for peta, 51 for rap)
-_C.DATASET.TRAIN_SPLIT = 'trainval'
-_C.DATASET.VAL_SPLIT = 'val'
-_C.DATASET.TEST_SPLIT = 'test'
-_C.DATASET.HEIGHT = 256
-_C.DATASET.WIDTH = 192
-
-# ----- BACKBONE BUILDER -----
-_C.BACKBONE = CN()
-_C.BACKBONE.TYPE = "resnet50"
-_C.BACKBONE.MULTISCALE = False
-
-# ----- MODULE BUILDER -----
-# _C.MODULE = CN()
-# _C.MODULE.TYPE = "GAP"
-
-# ----- CLASSIFIER BUILDER -----
-_C.CLASSIFIER = CN()
-_C.CLASSIFIER.TYPE = "base"
-_C.CLASSIFIER.NAME = ""
-_C.CLASSIFIER.POOLING = "avg"
-_C.CLASSIFIER.BN = False
-_C.CLASSIFIER.SCALE = 1
-
-# ----- TRAIN BUILDER -----
-_C.TRAIN = CN()
-_C.TRAIN.BATCH_SIZE = 64
-_C.TRAIN.MAX_EPOCH = 30
-_C.TRAIN.SHUFFLE = True
-_C.TRAIN.NUM_WORKERS = 4
-_C.TRAIN.CLIP_GRAD = False
-_C.TRAIN.BN_WD = True
-
-_C.TRAIN.DATAAUG = CN()
-_C.TRAIN.DATAAUG.TYPE = 'base'
-_C.TRAIN.DATAAUG.AUTOAUG_PROB = 0.5
-
-_C.TRAIN.EMA = CN()
-_C.TRAIN.EMA.ENABLE = False
-_C.TRAIN.EMA.DECAY = 0.9998
-_C.TRAIN.EMA.FORCE_CPU = False
-
-_C.TRAIN.OPTIMIZER = CN()
-_C.TRAIN.OPTIMIZER.TYPE = "SGD"
-_C.TRAIN.OPTIMIZER.MOMENTUM = 0.9
-_C.TRAIN.OPTIMIZER.WEIGHT_DECAY = 1e-4
-
-_C.TRAIN.LR_SCHEDULER = CN()
-_C.TRAIN.LR_SCHEDULER.TYPE = "plateau"
-_C.TRAIN.LR_SCHEDULER.LR_STEP = [0,]
-_C.TRAIN.LR_SCHEDULER.LR_FT = 1e-2
-_C.TRAIN.LR_SCHEDULER.LR_NEW = 1e-2
-_C.TRAIN.LR_SCHEDULER.WMUP_COEF = 0.01
-_C.TRAIN.LR_SCHEDULER.WMUP_LR_INIT = 1e-6
+def __yaml_load(file='data.yaml', append_filename=False):
+    with open(file, errors='ignore', encoding='utf-8') as f:
+        s = f.read()  # string
+        if not s.isprintable():
+            s = re.sub(r'[^\x09\x0A\x0D\x20-\x7E\x85\xA0-\uD7FF\uE000-\uFFFD\U00010000-\U0010ffff]+', '', s)
+        return {**yaml.safe_load(s), 'yaml_file': str(file)} if append_filename else yaml.safe_load(s)
 
 
-_C.TRAIN.AUX_LOSS_START = -1
+def __overrides_config(lower_cfg:ConfigNamespace, upper_cfg:ConfigNamespace):
+    for cfgkey in upper_cfg.__dict__.keys():
+        if isinstance(upper_cfg.__dict__[cfgkey], ConfigNamespace):
+            __overrides_config(lower_cfg.__dict__[cfgkey], upper_cfg.__dict__[cfgkey])
+        else:
+            lower_cfg.__dict__.update({cfgkey: upper_cfg.__dict__[cfgkey]})
 
-# ----- INFER BUILDER -----
-
-_C.INFER = CN()
-_C.INFER.SAMPLING = False
-
-# ----- LOSS BUILDER -----
-_C.LOSS = CN()
-_C.LOSS.TYPE = "bce"
-_C.LOSS.SAMPLE_WEIGHT = ""  # None
-_C.LOSS.LOSS_WEIGHT = [1, ]
-_C.LOSS.SIZESUM = True   # for a sample, BCE losses is the summation of all label instead of the average.
-
-_C.METRIC = CN()
-_C.METRIC.TYPE = 'pedestrian'
-
-# ------ visualization ---------
-_C.VIS = CN()
-_C.VIS.CAM = 'valid'
-_C.VIS.TENSORBOARD = CN()
-_C.VIS.TENSORBOARD.ENABLE = True
-
-_C.VIS.VISDOM = False
-
-
-# ----------- Transformer -------------
-_C.TRANS = CN()
-_C.TRANS.DIM_HIDDEN = 256
-_C.TRANS.DROPOUT = 0.1
-_C.TRANS.NHEADS = 8
-_C.TRANS.DIM_FFD = 2048
-_C.TRANS.ENC_LAYERS = 6
-_C.TRANS.DEC_LAYERS = 6
-_C.TRANS.PRE_NORM = False
-_C.TRANS.EOS_COEF = 0.1
-_C.TRANS.NUM_QUERIES = 100
-
-
-# testing
-# _C.TEST = CN()
-# _C.TEST.BATCH_SIZE = 32
-# _C.TEST.NUM_WORKERS = 8
-# _C.TEST.MODEL_FILE = ""
-#
-# _C.TRANSFORMS = CN()
-# _C.TRANSFORMS.TRAIN_TRANSFORMS = ("random_resized_crop", "random_horizontal_flip")
-# _C.TRANSFORMS.TEST_TRANSFORMS = ("shorter_resize_for_crop", "center_crop")
-#
-# _C.TRANSFORMS.PROCESS_DETAIL = CN()
-# _C.TRANSFORMS.PROCESS_DETAIL.RANDOM_CROP = CN()
-# _C.TRANSFORMS.PROCESS_DETAIL.RANDOM_CROP.PADDING = 4
-# _C.TRANSFORMS.PROCESS_DETAIL.RANDOM_RESIZED_CROP = CN()
-# _C.TRANSFORMS.PROCESS_DETAIL.RANDOM_RESIZED_CROP.SCALE = (0.08, 1.0)
-# _C.TRANSFORMS.PROCESS_DETAIL.RANDOM_RESIZED_CROP.RATIO = (0.75, 1.333333333)
-
-
-def update_config(cfg, args):
-    cfg.defrost()
-
-    cfg.merge_from_file(args.cfg)  # update cfg
-    # cfg.merge_from_list(args.opts)
-
-    cfg.freeze()
+def update_config(cfg, cfg_fpath):
+    cfg_dict = __yaml_load(cfg_fpath)
+    if cfg_dict is None:
+        n_cfg = ConfigNamespace(**{})
+    else:
+        for k, v in cfg_dict.items():
+            if isinstance(v, str) and v.lower() == 'none':
+                cfg_dict[k] = None
+        n_cfg = ConfigNamespace(**cfg_dict)
+    __overrides_config(cfg, n_cfg)

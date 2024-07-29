@@ -1,11 +1,9 @@
 import argparse
 import json
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 import pickle
 
 from dataset.augmentation import get_transform
-from dataset.multi_label.coco import COCO14
 from metrics.pedestrian_metrics import get_pedestrian_metrics
 from models.model_factory import build_backbone, build_classifier
 
@@ -24,28 +22,39 @@ from tools.function import get_model_log_path, get_reload_weight
 from tools.utils import set_seed, str2bool, time_str
 from losses import bceloss, scaledbceloss
 
+
+CUDA_DEVICE = 'cuda:0'
+WEIGHT_PATH = ''
+
+
 set_seed(605)
 
 
-def main(cfg, args):
+class PedesInfer:
+    def __init__(self):
+        '''loading dataset and model'''
+        
+        pass
+    
+    def inference(self):
+        pass
+
+    def __print_result(self):
+        pass
+    
+    
+    
+
+def main():
     exp_dir = os.path.join('exp_result', cfg.DATASET.NAME)
     model_dir, log_dir = get_model_log_path(exp_dir, cfg.NAME)
 
     train_tsfm, valid_tsfm = get_transform(cfg)
-    print(valid_tsfm)
 
-    if cfg.DATASET.TYPE == 'multi_label':
-        train_set = COCO14(cfg=cfg, split=cfg.DATASET.TRAIN_SPLIT, transform=train_tsfm,
-                           target_transform=cfg.DATASET.TARGETTRANSFORM)
-
-        valid_set = COCO14(cfg=cfg, split=cfg.DATASET.VAL_SPLIT, transform=valid_tsfm,
-                           target_transform=cfg.DATASET.TARGETTRANSFORM)
-    else:
-        train_set = PedesAttr(cfg=cfg, split=cfg.DATASET.TRAIN_SPLIT, transform=valid_tsfm,
-                              target_transform=cfg.DATASET.TARGETTRANSFORM)
-        valid_set = PedesAttr(cfg=cfg, split=cfg.DATASET.VAL_SPLIT, transform=valid_tsfm,
-                              target_transform=cfg.DATASET.TARGETTRANSFORM)
-
+    train_set = PedesAttr(cfg=cfg, split=cfg.DATASET.TRAIN_SPLIT, transform=valid_tsfm,
+                            target_transform=cfg.DATASET.TARGETTRANSFORM)
+    valid_set = PedesAttr(cfg=cfg, split=cfg.DATASET.VAL_SPLIT, transform=valid_tsfm,
+                            target_transform=cfg.DATASET.TARGETTRANSFORM)
 
     train_loader = DataLoader(
         dataset=train_set,
@@ -83,7 +92,7 @@ def main(cfg, args):
     if torch.cuda.is_available():
         model = torch.nn.DataParallel(model).cuda()
 
-    model = get_reload_weight(model_dir, model, pth='/mnt/data1/jiajian/code/Rethinking_of_PAR/exp_result/coco14/resnet101.sgd.bt32/img_model/ckpt_max_2021-11-28_10:14:50.pth')
+    model = get_reload_weight(model_dir, model, pth=WEIGHT_PATH)
 
     model.eval()
     preds_probs = []
@@ -159,4 +168,4 @@ if __name__ == '__main__':
     args = argument_parser()
     update_config(cfg, args)
 
-    main(cfg, args)
+    main()

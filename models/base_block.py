@@ -7,7 +7,7 @@ import torch.nn.init as init
 import torch.nn.functional as F
 from torch.nn.modules.batchnorm import _BatchNorm
 
-from models.registry import CLASSIFIER
+from .model_registry import CLASSIFIER
 
 
 class BaseClassifier(nn.Module):

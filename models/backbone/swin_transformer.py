@@ -17,12 +17,9 @@ from torch.nn import ModuleList
 from torch.nn import Sequential
 from torch.nn import Linear
 from torch import Tensor
-from mmcv.runner import load_checkpoint as _load_checkpoint
 
 from itertools import repeat
 import collections.abc
-
-from models.registry import BACKBONE
 
 def _ntuple(n):
 
@@ -1390,17 +1387,3 @@ class SwinTransformer(BaseModule):
         #x = torch.flatten(x, 1)
         return out
 
-@BACKBONE.register("swin_b")
-def swin_base_patch4_window7_224(pretrained='./pretrained/solider_swin_base.pth', convert_weights=False, img_size=224,drop_rate=0.0, attn_drop_rate=0.0, drop_path_rate=0., **kwargs):
-    model = SwinTransformer(pretrained=pretrained, convert_weights=convert_weights, pretrain_img_size = img_size, patch_size=4, window_size=7, embed_dims=128, depths=(2, 2, 18, 2), num_heads=(4, 8, 16, 32), drop_path_rate=drop_path_rate, drop_rate=drop_rate, attn_drop_rate=attn_drop_rate, **kwargs)
-    return model
-
-@BACKBONE.register("swin_s")
-def swin_small_patch4_window7_224(pretrained='./pretrained/solider_swin_small.pth', convert_weights=False, img_size=224,drop_rate=0.0, attn_drop_rate=0.0, drop_path_rate=0., **kwargs):
-    model = SwinTransformer(pretrained=pretrained, convert_weights=convert_weights, pretrain_img_size = img_size, patch_size=4, window_size=7, embed_dims=96, depths=(2, 2, 18, 2), num_heads=(3, 6, 12, 24), drop_path_rate=drop_path_rate, drop_rate=drop_rate, attn_drop_rate=attn_drop_rate, **kwargs)
-    return model
-
-@BACKBONE.register("swin_t")
-def swin_tiny_patch4_window7_224(pretrained='./pretrained/solider_swin_tiny.pth', convert_weights=False, img_size=224,drop_rate=0.0, attn_drop_rate=0.0, drop_path_rate=0., **kwargs):
-    model = SwinTransformer(pretrained=pretrained, convert_weights=convert_weights, pretrain_img_size = img_size, patch_size=4, window_size=7, embed_dims=96, depths=(2, 2, 6, 2), num_heads=(3, 6, 12, 24), drop_path_rate=drop_path_rate, drop_rate=drop_rate, attn_drop_rate=attn_drop_rate, **kwargs)
-    return model

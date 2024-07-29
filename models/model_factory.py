@@ -1,6 +1,6 @@
-from models.registry import BACKBONE
-from models.registry import CLASSIFIER
-from models.registry import LOSSES
+from .model_registry import BACKBONE
+from .model_registry import CLASSIFIER
+from .model_registry import LOSSES
 
 
 model_dict = {
